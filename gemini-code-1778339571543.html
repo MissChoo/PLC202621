@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CCTV Logic Lab - Final</title>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --danger: #ef4444; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        #app-container { width: 100%; max-width: 900px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        
+        .instruction-box { background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary); }
+        .instruction-box h3 { margin: 0 0 8px 0; color: var(--primary); font-size: 1.1rem; }
+        .instruction-box p { margin: 0; font-size: 0.95rem; line-height: 1.5; color: #475569; }
+
+        .viewport { position: relative; width: 100%; background: #000; border-radius: 8px; overflow: hidden; touch-action: none; }
+        #base-img { width: 100%; height: auto; display: block; pointer-events: none; -webkit-user-drag: none; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: crosshair; }
+
+        .toolbar { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; }
+        .tool-btn { flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .tool-btn.active { border-color: var(--primary); background: #eff6ff; color: var(--primary); }
+        .tool-btn.eraser-active { border-color: var(--danger); background: #fef2f2; color: var(--danger); }
+
+        #banner { margin-top: 15px; padding: 15px; border-radius: 8px; display: none; text-align: center; font-weight: bold; line-height: 1.4; }
+        .success { display: block !important; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .error { display: block !important; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .controls { display: flex; gap: 10px; margin-top: 15px; }
+        button.action-btn { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; transition: opacity 0.2s; }
+        .btn-test { background: var(--primary); }
+        .btn-reset { background: #64748b; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div class="instruction-box">
+        <h3>System Rewiring Task</h3>
+        <p>Rewire the camera. There are two recording units. If one recording unit is not working, the other can still function. If the bulb or storage unit is faulty, the circuit will be opened. Draw wires connecting the various components.</p>
+    </div>
+    
+    <div class="toolbar">
+        <button id="drawMode" class="tool-btn active" onclick="setTool('draw')">✏️ Draw Wire</button>
+        <button id="eraseMode" class="tool-btn" onclick="setTool('erase')">🧼 Eraser</button>
+    </div>
+
+    <div class="viewport">
+        <img id="base-img" src="https://i.ibb.co/sJg4fz5w/Screenshot-2026-05-09-215944.png" alt="CCTV Schematic">
+        <canvas id="circuitCanvas"></canvas>
+    </div>
+
+    <div id="banner"></div>
+
+    <div class="controls">
+        <button class="action-btn btn-test" onclick="validateCircuit()">Check Circuit</button>
+        <button class="action-btn btn-reset" onclick="resetCanvas()">Clear All</button>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('circuitCanvas');
+const ctx = canvas.getContext('2d');
+const img = document.getElementById('base-img');
+const banner = document.getElementById('banner');
+
+const ANCHORS = {
+    PS_P:   { x: 67.4, y: 41.2 }, PS_N:   { x: 74.8, y: 38.2 }, 
+    RU1_A:  { x: 35.5, y: 32.5 }, RU1_B:  { x: 47.9, y: 28.5 }, 
+    RU2_A:  { x: 38.0, y: 53.6 }, RU2_B:  { x: 50.4, y: 49.3 }, 
+    SU_A:   { x: 59.2, y: 28.3 }, SU_B:   { x: 71.3, y: 24.3 }, 
+    CIRC_A: { x: 78.4, y: 10.4 }, CIRC_B: { x: 83.1, y: 16.5 }  
+};
+
+let paths = []; 
+let currentPath = [];
+let isDrawing = false;
+let currentTool = 'draw';
+
+function setTool(tool) {
+    currentTool = tool;
+    document.getElementById('drawMode').className = tool === 'draw' ? 'tool-btn active' : 'tool-btn';
+    document.getElementById('eraseMode').className = tool === 'erase' ? 'tool-btn eraser-active' : 'tool-btn';
+    canvas.style.cursor = tool === 'erase' ? 'alias' : 'crosshair';
+}
+
+function sync() {
+    canvas.width = img.clientWidth;
+    canvas.height = img.clientHeight;
+    render();
+}
+
+window.addEventListener('load', sync);
+window.addEventListener('resize', sync);
+
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: cx - rect.left, y: cy - rect.top };
+}
+
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    
+    paths.forEach(path => {
+        ctx.strokeStyle = "#334155";
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+        ctx.stroke();
+    });
+
+    if (isDrawing && currentPath.length > 1) {
+        ctx.strokeStyle = currentTool === 'erase' ? "rgba(239, 68, 68, 0.3)" : "#2563eb";
+        ctx.beginPath();
+        ctx.moveTo(currentPath[0].x, currentPath[0].y);
+        for (let i = 1; i < currentPath.length; i++) ctx.lineTo(currentPath[i].x, currentPath[i].y);
+        ctx.stroke();
+    }
+
+    ctx.save();
+    ctx.globalAlpha = 0; 
+    Object.keys(ANCHORS).forEach(id => {
+        const p = { x: (ANCHORS[id].x/100)*canvas.width, y: (ANCHORS[id].y/100)*canvas.height };
+        ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+}
+
+function start(e) {
+    const pos = getPos(e);
+    if (currentTool === 'erase') {
+        eraseAt(pos);
+    } else {
+        isDrawing = true; 
+        currentPath = [pos];
+    }
+    banner.style.display = 'none';
+}
+
+function move(e) { if (!isDrawing) return; currentPath.push(getPos(e)); render(); }
+
+function end() {
+    if (isDrawing && currentPath.length > 2 && currentTool === 'draw') paths.push(currentPath);
+    isDrawing = false; currentPath = []; render();
+}
+
+function eraseAt(pos) {
+    const eraseRadius = 15;
+    paths = paths.filter(path => !path.some(p => Math.hypot(p.x - pos.x, p.y - pos.y) < eraseRadius));
+    render();
+}
+
+canvas.addEventListener('mousedown', start);
+canvas.addEventListener('mousemove', move);
+window.addEventListener('mouseup', end);
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive:false});
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, {passive:false});
+canvas.addEventListener('touchend', end);
+
+function isNearPath(point, path, threshold = 20) {
+    if (!path) return false;
+    return path.some(p => Math.hypot(p.x - point.x, p.y - point.y) < threshold);
+}
+
+function validateCircuit() {
+    const radius = 35;
+    let pathA = null, pathB = null;
+    let seriesConnections = [];
+    let seriesNodes = ['PS_P', 'PS_N', 'SU_A', 'SU_B', 'CIRC_A', 'CIRC_B'];
+
+    paths.forEach(path => {
+        const p1 = path[0], p2 = path[path.length - 1];
+        let n1 = null, n2 = null;
+        Object.keys(ANCHORS).forEach(id => {
+            const pos = { x: (ANCHORS[id].x/100)*canvas.width, y: (ANCHORS[id].y/100)*canvas.height };
+            if (Math.hypot(pos.x - p1.x, pos.y - p1.y) < radius) n1 = id;
+            if (Math.hypot(pos.x - p2.x, pos.y - p2.y) < radius) n2 = id;
+        });
+
+        if ((n1 === 'RU1_A' && n2 === 'RU2_A') || (n1 === 'RU2_A' && n2 === 'RU1_A')) pathA = path;
+        if ((n1 === 'RU1_B' && n2 === 'RU2_B') || (n1 === 'RU2_B' && n2 === 'RU1_B')) pathB = path;
+        if (n1 && n2 && seriesNodes.includes(n1) && seriesNodes.includes(n2)) seriesConnections.push([n1, n2]);
+    });
+
+    if (!pathA || !pathB) {
+        banner.textContent = "Logic Error: Check that the wires fulfill the conditions.";
+        banner.className = "error"; return;
+    }
+
+    const seriesAdj = {};
+    seriesNodes.forEach(n => seriesAdj[n] = []);
+    seriesConnections.forEach(([u, v]) => { seriesAdj[u].push(v); seriesAdj[v].push(u); });
+    [['PS_P', 'PS_N'], ['SU_A', 'SU_B'], ['CIRC_A', 'CIRC_B']].forEach(([a, b]) => {
+        seriesAdj[a].push(b); seriesAdj[b].push(a);
+    });
+
+    const endpoints = seriesNodes.filter(n => seriesAdj[n].length === 1);
+    let connectedToA = false, connectedToB = false;
+
+    paths.forEach(path => {
+        const p1 = path[0], p2 = path[path.length - 1];
+        let startNode = null, endNode = null;
+        Object.keys(ANCHORS).forEach(id => {
+            const pos = { x: (ANCHORS[id].x/100)*canvas.width, y: (ANCHORS[id].y/100)*canvas.height };
+            if (Math.hypot(pos.x - p1.x, pos.y - p1.y) < radius) startNode = id;
+            if (Math.hypot(pos.x - p2.x, pos.y - p2.y) < radius) endNode = id;
+        });
+
+        if (endpoints.includes(startNode)) {
+            if (isNearPath(p2, pathA)) connectedToA = true;
+            if (isNearPath(p2, pathB)) connectedToB = true;
+        } else if (endpoints.includes(endNode)) {
+            if (isNearPath(p1, pathA)) connectedToA = true;
+            if (isNearPath(p1, pathB)) connectedToB = true;
+        }
+    });
+
+    if (endpoints.length === 2 && connectedToA && connectedToB) {
+        banner.textContent = "Task Successful! The circuit works";
+        banner.className = "success";
+    } else {
+        banner.textContent = "Logic Error: Check that the wires fulfill the conditions.";
+        banner.className = "error";
+    }
+}
+
+function resetCanvas() { paths = []; banner.style.display = 'none'; render(); }
+</script>
+</body>
+</html>
