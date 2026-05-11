@@ -3,65 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CCTV Logic Lab - Fully Responsive</title>
+    <title>CCTV Circuit Lab</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --danger: #ef4444; }
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --danger: #ef4444; --success: #166534; }
         
-        /* Ensure the app fits mobile screens without accidental zooming/scrolling */
-        html, body { overflow-x: hidden; position: relative; }
-        
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
-        
-        #app-container { width: 100%; max-width: 900px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); box-sizing: border-box; }
-        
-        .instruction-box { background: #f1f5f9; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--primary); }
-        .instruction-box h3 { margin: 0 0 5px 0; color: var(--primary); font-size: 1rem; }
-        .instruction-box p { margin: 0; font-size: 0.85rem; line-height: 1.4; color: #475569; }
+        html, body { 
+            overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; 
+            position: fixed; touch-action: none; background: var(--bg);
+            font-family: system-ui, -apple-system, sans-serif;
+        }
 
-        /* The viewport maintains the aspect ratio of your schematic image */
-        .viewport { position: relative; width: 100%; background: #000; border-radius: 8px; overflow: hidden; touch-action: none; -webkit-user-select: none; }
-        #base-img { width: 100%; height: auto; display: block; pointer-events: none; -webkit-user-drag: none; }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+        #app-container { 
+            display: flex; flex-direction: column; width: 100vw; height: 100vh; 
+            padding: 10px; box-sizing: border-box; 
+        }
 
-        .toolbar { display: flex; gap: 8px; margin-bottom: 12px; width: 100%; }
-        .tool-btn { flex: 1; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; font-weight: bold; font-size: 0.9rem; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
-        .tool-btn.active { border-color: var(--primary); background: #eff6ff; color: var(--primary); }
-        .tool-btn.eraser-active { border-color: var(--danger); background: #fef2f2; color: var(--danger); }
+        header { text-align: center; margin-bottom: 10px; flex-shrink: 0; }
+        h1 { margin: 0; font-size: 1.4rem; color: var(--primary); }
+        .instructions { margin: 5px 0; font-size: 0.9rem; color: #475569; }
 
-        #banner { margin-top: 12px; padding: 12px; border-radius: 8px; display: none; text-align: center; font-weight: bold; font-size: 0.9rem; line-height: 1.4; }
-        .success { display: block !important; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-        .error { display: block !important; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .toolbar { 
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; 
+            margin-bottom: 10px; flex-shrink: 0; width: 100%; max-width: 600px;
+            margin-left: auto; margin-right: auto;
+        }
 
-        .controls { display: flex; gap: 8px; margin-top: 12px; }
-        button.action-btn { flex: 1; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; font-size: 0.9rem; transition: opacity 0.2s; -webkit-tap-highlight-color: transparent; }
-        .btn-test { background: var(--primary); }
-        .btn-reset { background: #64748b; }
+        .btn { 
+            padding: 10px 2px; border: 2px solid #e2e8f0; border-radius: 8px; 
+            background: white; cursor: pointer; font-weight: bold; font-size: 0.8rem; 
+        }
+
+        .btn.active { border-color: var(--primary); background: #eff6ff; color: var(--primary); }
+        .btn-check { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .viewport { 
+            position: relative; flex-grow: 1; background: #fff; border-radius: 12px; 
+            overflow: hidden; border: 1px solid #e2e8f0; display: flex; 
+            align-items: center; justify-content: center;
+        }
+
+        #base-img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+        canvas { position: absolute; z-index: 10; cursor: crosshair; touch-action: none; }
+
+        #banner { 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            width: 80%; z-index: 100; padding: 12px; border-radius: 8px; 
+            display: none; text-align: center; font-weight: bold; pointer-events: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Using !important to override any lingering display styles */
+        .success-msg { display: block !important; background: #dcfce7 !important; color: var(--success) !important; border: 1px solid #bbf7d0; }
+        .error-msg { display: block !important; background: #fee2e2 !important; color: #991b1b !important; border: 1px solid #fecaca; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <div class="instruction-box">
-        <h3>System Rewiring Task</h3>
-        <p>Rewire the camera. There are two recording units. If one recording unit is not working, the other can still function. If the bulb or storage unit is faulty, the circuit will be opened. Draw wires connecting the components.</p>
-    </div>
-    
+    <header>
+        <h1>Complete the CCTV Circuit</h1>
+        <p class="instructions">Draw lines to connect the schematic.</p>
+    </header>
+
     <div class="toolbar">
-        <button id="drawMode" class="tool-btn active" onclick="setTool('draw')">✏️ Draw</button>
-        <button id="eraseMode" class="tool-btn" onclick="setTool('erase')">🧼 Eraser</button>
+        <button id="drawMode" class="btn active" onclick="setTool('draw')">✏️ Draw</button>
+        <button id="eraseMode" class="btn" onclick="setTool('erase')">🧼 Eraser</button>
+        <button class="btn btn-check" onclick="validateCircuit()">✔️ Check</button>
+        <button class="btn" onclick="resetCanvas()">🗑️ Clear</button>
     </div>
 
-    <div class="viewport">
-        <img id="base-img" src="https://i.ibb.co/sJg4fz5w/Screenshot-2026-05-09-215944.png" alt="CCTV Schematic">
+    <div class="viewport" id="vBox">
+        <img id="base-img" src="https://i.ibb.co/7sd5RLB/Screenshot-2026-05-11-124408.png">
         <canvas id="circuitCanvas"></canvas>
     </div>
 
     <div id="banner"></div>
-
-    <div class="controls">
-        <button class="action-btn btn-test" onclick="validateCircuit()">Check Circuit</button>
-        <button class="action-btn btn-reset" onclick="resetCanvas()">Clear All</button>
-    </div>
 </div>
 
 <script>
@@ -69,187 +85,168 @@ const canvas = document.getElementById('circuitCanvas');
 const ctx = canvas.getContext('2d');
 const img = document.getElementById('base-img');
 const banner = document.getElementById('banner');
+const vBox = document.getElementById('vBox');
 
-// Coordinates stored as percentages (0-100) to ensure responsiveness
 const ANCHORS = {
-    PS_P:   { x: 67.4, y: 41.2 }, PS_N:   { x: 74.8, y: 38.2 }, 
-    RU1_A:  { x: 35.5, y: 32.5 }, RU1_B:  { x: 47.9, y: 28.5 }, 
-    RU2_A:  { x: 38.0, y: 53.6 }, RU2_B:  { x: 50.4, y: 49.3 }, 
-    SU_A:   { x: 59.2, y: 28.3 }, SU_B:   { x: 71.3, y: 24.3 }, 
-    CIRC_A: { x: 78.4, y: 10.4 }, CIRC_B: { x: 83.1, y: 16.5 }  
+    PS_P: {x: 68.6, y: 39.8}, PS_N: {x: 76.5, y: 36.8},
+    RU1_L: {x: 35.8, y: 32.5}, RU1_R: {x: 47.5, y: 28.5},
+    RU2_L: {x: 38.3, y: 53.5}, RU2_R: {x: 50.1, y: 49.3},
+    SU_L: {x: 59.9, y: 28.4}, SU_R: {x: 71.9, y: 24.3},
+    B_L: {x: 78.6, y: 13.0}, B_R: {x: 84.8, y: 14.5}
 };
 
-let paths = []; 
+let paths = [];
 let currentPath = [];
 let isDrawing = false;
 let currentTool = 'draw';
 
-function setTool(tool) {
-    currentTool = tool;
-    document.getElementById('drawMode').className = tool === 'draw' ? 'tool-btn active' : 'tool-btn';
-    document.getElementById('eraseMode').className = tool === 'erase' ? 'tool-btn eraser-active' : 'tool-btn';
+// THE FIX: Centralized Force-Hide
+function clearUIBanner() {
+    banner.className = '';
+    banner.style.display = 'none';
+    banner.textContent = '';
+}
+
+function setTool(t) {
+    currentTool = t;
+    document.getElementById('drawMode').classList.toggle('active', t === 'draw');
+    document.getElementById('eraseMode').classList.toggle('active', t === 'erase');
+    clearUIBanner(); 
 }
 
 function sync() {
-    // This allows the canvas to resize whenever the window or orientation changes
-    const rect = img.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    const imgRatio = img.naturalWidth / img.naturalHeight;
+    const boxWidth = vBox.clientWidth;
+    const boxHeight = vBox.clientHeight;
+    const boxRatio = boxWidth / boxHeight;
+    let cWidth, cHeight;
+    if (boxRatio > imgRatio) {
+        cHeight = boxHeight; cWidth = boxHeight * imgRatio;
+    } else {
+        cWidth = boxWidth; cHeight = boxWidth / imgRatio;
+    }
+    canvas.width = cWidth; canvas.height = cHeight;
     render();
 }
-
-// Critical for responsiveness: wait for image load and listen for resizes
-img.onload = sync;
 window.addEventListener('resize', sync);
-window.addEventListener('orientationchange', () => setTimeout(sync, 200));
+img.onload = sync;
 
 function getPos(e) {
     const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-        px: ((clientX - rect.left) / rect.width) * 100, // percentage X
-        py: ((clientY - rect.top) / rect.height) * 100  // percentage Y
-    };
+    const cx = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+    const cy = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+    return { px: ((cx - rect.left) / canvas.width) * 100, py: ((cy - rect.top) / canvas.height) * 100 };
 }
 
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.lineWidth = Math.max(2, canvas.width / 200); // Dynamic line width based on screen size
-    ctx.lineCap = "round"; 
-    ctx.lineJoin = "round";
+    const lw = Math.max(4, canvas.width / 180);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
     
-    // Draw paths based on their percentage coordinates to stay scaled correctly
-    paths.forEach(path => {
-        ctx.strokeStyle = "#334155";
-        ctx.beginPath();
-        ctx.moveTo((path[0].px / 100) * canvas.width, (path[0].py / 100) * canvas.height);
-        for (let i = 1; i < path.length; i++) {
-            ctx.lineTo((path[i].px / 100) * canvas.width, (path[i].py / 100) * canvas.height);
-        }
+    paths.forEach(p => {
+        ctx.strokeStyle = "#1e293b"; ctx.lineWidth = lw; ctx.beginPath();
+        ctx.moveTo((p[0].px/100)*canvas.width, (p[0].py/100)*canvas.height);
+        for(let i=1; i<p.length; i++) ctx.lineTo((p[i].px/100)*canvas.width, (p[i].py/100)*canvas.height);
         ctx.stroke();
     });
 
-    if (isDrawing && currentPath.length > 1) {
-        ctx.strokeStyle = currentTool === 'erase' ? "rgba(239, 68, 68, 0.4)" : "#2563eb";
-        ctx.beginPath();
-        ctx.moveTo((currentPath[0].px / 100) * canvas.width, (currentPath[0].py / 100) * canvas.height);
-        for (let i = 1; i < currentPath.length; i++) {
-            ctx.lineTo((currentPath[i].px / 100) * canvas.width, (currentPath[i].py / 100) * canvas.height);
-        }
+    if(isDrawing && currentPath.length > 1) {
+        ctx.strokeStyle = currentTool === 'erase' ? "rgba(239, 68, 68, 0.5)" : "#2563eb";
+        ctx.lineWidth = lw; ctx.beginPath();
+        ctx.moveTo((currentPath[0].px/100)*canvas.width, (currentPath[0].py/100)*canvas.height);
+        for(let i=1; i<currentPath.length; i++) ctx.lineTo((currentPath[i].px/100)*canvas.width, (currentPath[i].py/100)*canvas.height);
         ctx.stroke();
     }
+
+    // Fully Transparent Anchors
+    Object.values(ANCHORS).forEach(c => {
+        ctx.fillStyle = "rgba(0, 0, 0, 0)"; 
+        ctx.beginPath();
+        ctx.arc((c.x/100)*canvas.width, (c.y/100)*canvas.height, lw*1.3, 0, Math.PI*2);
+        ctx.fill(); 
+    });
 }
 
-function start(e) {
-    const pos = getPos(e);
-    if (currentTool === 'erase') {
-        eraseAt(pos);
-    } else {
-        isDrawing = true; 
-        currentPath = [pos];
+// Banner disappears the INSTANT the user interacts with the canvas
+const startEv = (e) => { 
+    clearUIBanner(); 
+    isDrawing = true; 
+    currentPath = [getPos(e)]; 
+};
+
+const moveEv = (e) => { if(isDrawing) { currentPath.push(getPos(e)); render(); } };
+
+const endEv = () => {
+    if(isDrawing && currentPath.length > 2) {
+        if(currentTool === 'erase') {
+            const last = currentPath[currentPath.length-1];
+            paths = paths.filter(p => !p.some(pt => Math.hypot(pt.px-last.px, pt.py-last.py) < 7));
+        } else { paths.push(currentPath); }
     }
-    banner.style.display = 'none';
-}
+    isDrawing = false; currentPath = []; render();
+};
 
-function move(e) { 
-    if (!isDrawing) return;
-    const pos = getPos(e);
-    currentPath.push(pos); 
-    render(); 
-}
+canvas.addEventListener('mousedown', startEv);
+window.addEventListener('mousemove', moveEv);
+window.addEventListener('mouseup', endEv);
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startEv(e); }, {passive:false});
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); moveEv(e); }, {passive:false});
+canvas.addEventListener('touchend', endEv);
 
-function end() {
-    if (isDrawing && currentPath.length > 2 && currentTool === 'draw') paths.push(currentPath);
-    isDrawing = false; 
-    currentPath = []; 
-    render();
-}
-
-function eraseAt(pos) {
-    const threshold = 5; // Percentage-based eraser threshold
-    paths = paths.filter(path => !path.some(p => Math.hypot(p.px - pos.px, p.py - pos.py) < threshold));
-    render();
-}
-
-// Touch and Mouse listeners
-canvas.addEventListener('mousedown', start);
-window.addEventListener('mousemove', move);
-window.addEventListener('mouseup', end);
-
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); }, {passive:false});
-canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, {passive:false});
-canvas.addEventListener('touchend', (e) => { e.preventDefault(); end(); }, {passive:false});
-
-function isNearPath(point, path, threshold = 4) {
-    if (!path) return false;
-    return path.some(p => Math.hypot(p.px - point.px, p.py - point.py) < threshold);
+function getAnchor(pt, r = 12) {
+    for (let id in ANCHORS) if (Math.hypot(ANCHORS[id].x - pt.px, ANCHORS[id].y - pt.py) < r) return id;
+    return null;
 }
 
 function validateCircuit() {
-    const radius = 6; // Percentage-based detection radius
-    let pathA = null, pathB = null;
-    let seriesConnections = [];
-    let seriesNodes = ['PS_P', 'PS_N', 'SU_A', 'SU_B', 'CIRC_A', 'CIRC_B'];
-
-    paths.forEach(path => {
-        const pStart = path[0], pEnd = path[path.length - 1];
-        let n1 = null, n2 = null;
-
-        Object.keys(ANCHORS).forEach(id => {
-            if (Math.hypot(ANCHORS[id].x - pStart.px, ANCHORS[id].y - pStart.py) < radius) n1 = id;
-            if (Math.hypot(ANCHORS[id].x - pEnd.px, ANCHORS[id].y - pEnd.py) < radius) n2 = id;
-        });
-
-        if ((n1 === 'RU1_A' && n2 === 'RU2_A') || (n1 === 'RU2_A' && n2 === 'RU1_A')) pathA = path;
-        if ((n1 === 'RU1_B' && n2 === 'RU2_B') || (n1 === 'RU2_B' && n2 === 'RU1_B')) pathB = path;
-        if (n1 && n2 && seriesNodes.includes(n1) && seriesNodes.includes(n2)) seriesConnections.push([n1, n2]);
+    // Keeping your original logic as requested
+    const adj = {};
+    Object.keys(ANCHORS).forEach(n => adj[n] = new Set());
+    const components = [['PS_P','PS_N'], ['SU_L','SU_R'], ['B_L','B_R']];
+    paths.forEach(p => {
+        const s = getAnchor(p[0]), e = getAnchor(p[p.length-1]);
+        if(s && e && s !== e) { adj[s].add(e); adj[e].add(s); }
     });
-
-    if (!pathA || !pathB) {
-        banner.textContent = "Logic Error: Check that the wires fulfill the conditions.";
-        banner.className = "error"; return;
-    }
-
-    const seriesAdj = {};
-    seriesNodes.forEach(n => seriesAdj[n] = []);
-    seriesConnections.forEach(([u, v]) => { seriesAdj[u].push(v); seriesAdj[v].push(u); });
-    [['PS_P', 'PS_N'], ['SU_A', 'SU_B'], ['CIRC_A', 'CIRC_B']].forEach(([a, b]) => {
-        seriesAdj[a].push(b); seriesAdj[b].push(a);
-    });
-
-    const endpoints = seriesNodes.filter(n => seriesAdj[n].length === 1);
-    let connectedToA = false, connectedToB = false;
-
-    paths.forEach(path => {
-        const pStart = path[0], pEnd = path[path.length - 1];
-        let sNode = null, eNode = null;
-        Object.keys(ANCHORS).forEach(id => {
-            if (Math.hypot(ANCHORS[id].x - pStart.px, ANCHORS[id].y - pStart.py) < radius) sNode = id;
-            if (Math.hypot(ANCHORS[id].x - pEnd.px, ANCHORS[id].y - pEnd.py) < radius) eNode = id;
-        });
-
-        if (endpoints.includes(sNode)) {
-            if (isNearPath(pEnd, pathA)) connectedToA = true;
-            if (isNearPath(pEnd, pathB)) connectedToB = true;
-        } else if (endpoints.includes(eNode)) {
-            if (isNearPath(pStart, pathA)) connectedToA = true;
-            if (isNearPath(pStart, pathB)) connectedToB = true;
+    const getConnectivity = (startNode, includeInternals = true) => {
+        const visited = new Set();
+        const stack = [startNode];
+        while(stack.length) {
+            const curr = stack.pop();
+            if(!visited.has(curr)) {
+                visited.add(curr);
+                adj[curr].forEach(n => stack.push(n));
+                if(includeInternals) {
+                    components.forEach(([u,v]) => {
+                        if(curr === u) stack.push(v);
+                        if(curr === v) stack.push(u);
+                    });
+                }
+            }
         }
-    });
+        return visited;
+    };
+    const railA = getConnectivity('RU1_L', false).has('RU2_L');
+    const railB = getConnectivity('RU1_R', false).has('RU2_R');
+    const fullNet = getConnectivity('PS_P', true);
+    const hasSU = fullNet.has('SU_L') || fullNet.has('SU_R');
+    const hasBulb = fullNet.has('B_L') || fullNet.has('B_R');
+    const hitsA = Array.from(getConnectivity('PS_P', true)).some(n => n.includes('_L') && n.startsWith('RU'));
+    const hitsB = Array.from(getConnectivity('PS_N', true)).some(n => n.includes('_R') && n.startsWith('RU'));
 
-    if (endpoints.length === 2 && connectedToA && connectedToB) {
-        banner.textContent = "Task Successful! The circuit works";
-        banner.className = "success";
+    if (railA && railB && hasSU && hasBulb && hitsA && hitsB) {
+        banner.textContent = "Success! Circuit is connected correctly.";
+        banner.className = "success-msg";
     } else {
-        banner.textContent = "Logic Error: Check that the wires fulfill the conditions.";
-        banner.className = "error";
+        banner.textContent = "Logic Error: Check Parallel/Series connections.";
+        banner.className = "error-msg";
     }
 }
 
-function resetCanvas() { paths = []; banner.style.display = 'none'; render(); }
+function resetCanvas() { 
+    paths = []; 
+    clearUIBanner(); // Force clear banner
+    render(); 
+}
 </script>
 </body>
 </html>
